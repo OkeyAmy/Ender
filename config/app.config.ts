@@ -58,7 +58,8 @@ export const appConfig = {
       'openai/gpt-5',
       'moonshotai/kimi-k2-instruct-0905',
       'anthropic/claude-sonnet-4-20250514',
-      'google/gemini-2.0-flash-exp'
+      // 'google/gemini-2.0-flash-exp' 
+      'google/gemini-flash-latest'
     ],
     
     // Model display names
@@ -66,7 +67,9 @@ export const appConfig = {
       'openai/gpt-5': 'GPT-5',
       'moonshotai/kimi-k2-instruct-0905': 'Kimi K2 (Groq)',
       'anthropic/claude-sonnet-4-20250514': 'Sonnet 4',
-      'google/gemini-2.0-flash-exp': 'Gemini 2.0 Flash (Experimental)'
+      // 'google/gemini-2.0-flash-exp': 'Gemini 2.0 Flash (Experimental)',
+      'google/gemini-flash-latest': 'Gemini Flash (Latest)'
+
     } as Record<string, string>,
     
     // Model API configuration
@@ -200,6 +203,27 @@ export const appConfig = {
     scraperDescriptions: {
       'firecrawl': 'Fast and reliable web scraping with caching',
       'scrapegraph': 'AI-powered intelligent web scraping'
+    } as Record<string, string>,
+  },
+  
+  // Blockchain Configuration
+  blockchain: {
+    // Default blockchain network
+    defaultChain: 'solana' as 'solana' | 'celo',
+    
+    // Available blockchain networks
+    availableChains: ['solana', 'celo'] as const,
+    
+    // Chain display names
+    chainDisplayNames: {
+      'solana': 'Solana',
+      'celo': 'Celo'
+    } as Record<string, string>,
+    
+    // Chain descriptions
+    chainDescriptions: {
+      'solana': 'Ultra-fast, low-fee blockchain',
+      'celo': 'Mobile-first, carbon-negative blockchain'
     } as Record<string, string>,
   }
 };

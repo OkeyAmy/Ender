@@ -119,6 +119,7 @@ export default function HomePage() {
         setIsTextSubmitting(true);
         sessionStorage.setItem('creationMode', 'text');
         sessionStorage.setItem('textBrief', brief);
+        sessionStorage.setItem('initialMessage', brief); // Store initial message for chat
         sessionStorage.setItem('selectedModel', selectedModel);
         sessionStorage.setItem('selectedChain', selectedChain);
         sessionStorage.setItem('selectedScraper', selectedScraper);
@@ -151,6 +152,7 @@ export default function HomePage() {
       // Wait for fade animation
       setTimeout(() => {
         sessionStorage.setItem('targetUrl', selectedResult.url);
+        sessionStorage.setItem('initialMessage', selectedResult.url); // Store initial message for chat
         sessionStorage.setItem('selectedStyle', selectedStyle);
         sessionStorage.setItem('selectedModel', selectedModel);
         sessionStorage.setItem('selectedScraper', selectedScraper);
@@ -166,6 +168,7 @@ export default function HomePage() {
     // If it's a URL, go straight to generation
     if (isURL(inputValue)) {
       sessionStorage.setItem('targetUrl', inputValue);
+      sessionStorage.setItem('initialMessage', inputValue); // Store initial message for chat
       sessionStorage.setItem('selectedStyle', selectedStyle);
       sessionStorage.setItem('selectedModel', selectedModel);
       sessionStorage.setItem('selectedScraper', selectedScraper);

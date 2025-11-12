@@ -26,8 +26,8 @@ const robotoMono = Roboto_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ender - Launch Dapps in Minutes",
-  description: "Vibe-code blockchain dapps in minutes. AI-powered dapp builder for Solana and Celo.",
+  title: "Open Lovable v2",
+  description: "Re-imagine any website in seconds with AI-powered website builder.",
 };
 
 export default function RootLayout({

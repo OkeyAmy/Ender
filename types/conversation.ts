@@ -10,6 +10,7 @@ export interface ConversationMessage {
     addedPackages?: string[]; // Packages added in this interaction
     editType?: string; // Type of edit performed
     sandboxId?: string; // Sandbox ID at time of message
+    chain?: 'solana' | 'celo'; // Blockchain network at time of message
   };
 }
 
@@ -46,5 +47,6 @@ export interface ConversationState {
   conversationId: string;
   startedAt: number;
   lastUpdated: number;
+  selectedChain?: 'solana' | 'celo'; // Blockchain network selected for this conversation
   context: ConversationContext;
 }

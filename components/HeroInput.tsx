@@ -9,6 +9,7 @@ interface HeroInputProps {
   placeholder?: string;
   className?: string;
   showSearchFeatures?: boolean;
+  disabled?: boolean;
 }
 
 function isURL(str: string): boolean {
@@ -23,7 +24,8 @@ export default function HeroInput({
   onSubmit, 
   placeholder = "Describe what you want to build...",
   className = "",
-  showSearchFeatures = true
+  showSearchFeatures = true,
+  disabled = false
 }: HeroInputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [showTiles, setShowTiles] = useState(false);
@@ -111,7 +113,7 @@ export default function HeroInput({
 
           <textarea
             ref={textareaRef}
-            className="w-full bg-transparent text-body-input text-accent-black placeholder:text-black-alpha-48 resize-none outline-none min-h-[24px] leading-6"
+            className={`w-full bg-transparent text-body-input text-accent-black placeholder:text-black-alpha-48 resize-none outline-none min-h-[24px] leading-6 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             placeholder={placeholder}
             value={value}
             onChange={(e) => onChange(e.target.value)}
@@ -119,6 +121,7 @@ export default function HeroInput({
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             rows={1}
+            disabled={disabled}
             style={{
               height: 'auto',
               overflow: 'hidden'
@@ -134,11 +137,11 @@ export default function HeroInput({
         <div className="p-10 flex justify-end items-center relative">
           <button
             onClick={onSubmit}
-            disabled={!value.trim()}
+            disabled={!value.trim() || disabled}
             className={`
               button relative rounded-10 px-8 py-8 text-label-medium font-medium
               flex items-center justify-center gap-6
-              ${value.trim() 
+              ${value.trim() && !disabled
                 ? 'button-primary text-accent-white active:scale-[0.995]' 
                 : 'bg-black-alpha-4 text-black-alpha-24 cursor-not-allowed'
               }

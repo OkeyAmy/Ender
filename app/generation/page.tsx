@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { appConfig } from '@/config/app.config';
 import HeroInput from '@/components/HeroInput';
 import SidebarInput from '@/components/app/generation/SidebarInput';
@@ -24,6 +25,7 @@ import {
 } from '@/lib/icons';
 import { motion } from 'framer-motion';
 import CodeApplicationProgress, { type CodeApplicationState } from '@/components/CodeApplicationProgress';
+import CollapsibleMessage from '@/components/app/generation/CollapsibleMessage';
 
 interface SandboxData {
   sandboxId: string;
@@ -51,13 +53,7 @@ function AISandboxPage() {
   const [responseArea, setResponseArea] = useState<string[]>([]);
   const [structureContent, setStructureContent] = useState('No sandbox created yet');
   const [promptInput, setPromptInput] = useState('');
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    {
-      content: 'Welcome! I can help you generate code with full context of your sandbox files and structure. Just start chatting - I\'ll automatically create a sandbox for you if needed!\n\nTip: If you see package errors like "react-router-dom not found", just type "npm install" or "check packages" to automatically install missing packages.',
-      type: 'system',
-      timestamp: new Date()
-    }
-  ]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [aiChatInput, setAiChatInput] = useState('');
   const [aiEnabled] = useState(true);
   const searchParams = useSearchParams();
@@ -257,6 +253,18 @@ function AISandboxPage() {
         sessionStorage.setItem('autoStart', 'true');
       }
       
+      // Read and display initial message from home page if it exists
+      const storedInitialMessage = sessionStorage.getItem('initialMessage');
+      if (storedInitialMessage && (storedUrl || storedTextBrief)) {
+        // Add the initial message to chat immediately
+        setTimeout(() => {
+          if (isMounted) {
+            addChatMessage(storedInitialMessage, 'user');
+          }
+        }, 100);
+        sessionStorage.removeItem('initialMessage');
+      }
+      
       // Clear old conversation
       try {
         await fetch('/api/conversation-state', {
@@ -376,6 +384,23 @@ function AISandboxPage() {
     }
   }, [chatMessages]);
 
+  // Show welcome toast on first visit
+  useEffect(() => {
+    const hasShownWelcome = sessionStorage.getItem('welcomeShown');
+    if (!hasShownWelcome) {
+      setTimeout(() => {
+        toast.info(
+          "Welcome! I can help you generate code with full context of your sandbox files and structure. Just start chatting - I'll automatically create a sandbox for you if needed!\n\nTip: If you see package errors like \"react-router-dom not found\", just type \"npm install\" or \"check packages\" to automatically install missing packages.",
+          {
+            duration: 8000,
+            position: 'top-right',
+          }
+        );
+        sessionStorage.setItem('welcomeShown', 'true');
+      }, 500);
+    }
+  }, []);
+
   // Auto-trigger generation when flag is set (from home page navigation)
   useEffect(() => {
     const hasTrigger =
@@ -415,6 +440,61 @@ function AISandboxPage() {
       }
       return [...prev, { content, type, timestamp: new Date(), metadata }];
     });
+  };
+
+  // Generate summary for collapsible messages
+  const generateMessageSummary = (msg: ChatMessage): string => {
+    const content = msg.content.toLowerCase();
+    
+    // Sandbox creation messages
+    if (content.includes('sandbox created') || content.includes('successfully recreated')) {
+      const fileMatch = msg.metadata?.appliedFiles?.length || content.match(/(\d+)\s+file/);
+      const fileCount = fileMatch ? (Array.isArray(fileMatch) ? fileMatch[1] : fileMatch) : '0';
+      return `✓ Sandbox created - ${fileCount} files generated`;
+    }
+    
+    // Package installation
+    if (content.includes('installing') || content.includes('installed')) {
+      const pkgMatch = content.match(/(\d+)\s+package/);
+      const pkgCount = pkgMatch ? pkgMatch[1] : 'packages';
+      return `✓ Installed ${pkgCount} packages`;
+    }
+    
+    // File creation/updates
+    if (content.includes('creating') || content.includes('created')) {
+      const fileMatch = content.match(/(\d+)\s+file/);
+      const fileCount = fileMatch ? fileMatch[1] : 'files';
+      return `✓ Created ${fileCount} files`;
+    }
+    
+    // Sandbox setup
+    if (content.includes('creating sandbox')) {
+      return '⏳ Creating sandbox...';
+    }
+    
+    // Command outputs
+    if (msg.type === 'command') {
+      if (msg.metadata?.commandType === 'error') {
+        return '⚠ Command error';
+      }
+      if (msg.metadata?.commandType === 'success') {
+        return '✓ Command completed';
+      }
+      return '$ Command output';
+    }
+    
+    // Error messages
+    if (msg.type === 'error' || content.includes('error')) {
+      return '⚠ Build errors detected';
+    }
+    
+    // AI generation
+    if (content.includes('code generated') || content.includes('ai recreation')) {
+      return '✓ AI generation complete';
+    }
+    
+    // Default fallback
+    return msg.content.split('\n')[0].substring(0, 50) + (msg.content.length > 50 ? '...' : '');
   };
   
   const checkAndInstallPackages = async () => {
@@ -1815,6 +1895,9 @@ Tip: I automatically detect and install npm packages from your code imports (lik
       console.log('[chat] - sandboxId:', fullContext.sandboxId);
       console.log('[chat] - isEdit:', conversationContext.appliedCode.length > 0);
       
+      // Get selected blockchain network from sessionStorage
+      const selectedChain = sessionStorage.getItem('selectedChain') || 'solana';
+      
       const response = await fetch('/api/generate-ai-code-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1822,7 +1905,8 @@ Tip: I automatically detect and install npm packages from your code imports (lik
           prompt: message,
           model: aiModel,
           context: fullContext,
-          isEdit: conversationContext.appliedCode.length > 0
+          isEdit: conversationContext.appliedCode.length > 0,
+          chain: selectedChain // Pass blockchain network to backend
         })
       });
       
@@ -3360,101 +3444,115 @@ Focus on the key sections and content, making it clean and modern.`;
                 <div key={idx} className="block">
                   <div className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className="block">
-                      <div className={`block rounded-[10px] px-14 py-8 ${
-                        msg.type === 'user' ? 'bg-[#36322F] text-white ml-auto max-w-[80%]' :
-                        msg.type === 'ai' ? 'bg-gray-100 text-gray-900 mr-auto max-w-[80%]' :
-                        msg.type === 'system' ? 'bg-[#36322F] text-white text-sm' :
-                        msg.type === 'command' ? 'bg-[#36322F] text-white font-mono text-sm' :
-                        msg.type === 'error' ? 'bg-red-900 text-red-100 text-sm border border-red-700' :
-                        'bg-[#36322F] text-white text-sm'
-                      }`}>
-                    {msg.type === 'command' ? (
-                      <div className="flex items-start gap-2">
-                        <span className={`text-xs ${
-                          msg.metadata?.commandType === 'input' ? 'text-blue-400' :
-                          msg.metadata?.commandType === 'error' ? 'text-red-400' :
-                          msg.metadata?.commandType === 'success' ? 'text-green-400' :
-                          'text-gray-400'
+                      {/* User and AI messages - keep as-is */}
+                      {msg.type === 'user' || msg.type === 'ai' ? (
+                        <div className={`block rounded-[10px] px-14 py-8 ${
+                          msg.type === 'user' ? 'bg-[#36322F] text-white ml-auto max-w-[80%]' :
+                          'bg-gray-100 text-gray-900 mr-auto max-w-[80%]'
                         }`}>
-                          {msg.metadata?.commandType === 'input' ? '$' : '>'}
-                        </span>
-                        <span className="flex-1 whitespace-pre-wrap text-white">{msg.content}</span>
-                      </div>
-                    ) : msg.type === 'error' ? (
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0">
-                          <div className="w-8 h-8 bg-red-800 rounded-full flex items-center justify-center">
-                            <svg className="w-6 h-6 text-red-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                          </div>
+                          <span className="text-body-input">{msg.content}</span>
                         </div>
-                        <div className="flex-1">
-                          <div className="font-semibold mb-1">Build Errors Detected</div>
-                          <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
-                          <div className="mt-2 text-xs opacity-70">Press 'F' or click the Fix button above to resolve</div>
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="text-body-input">{msg.content}</span>
-                    )}
-                      </div>
+                      ) : (
+                        /* System, command, and error messages - make collapsible */
+                        <CollapsibleMessage
+                          summary={generateMessageSummary(msg)}
+                          type={msg.type === 'error' ? 'error' : msg.type === 'command' ? 'command' : 'system'}
+                          defaultOpen={false}
+                        >
+                          {msg.type === 'command' ? (
+                            <div className="flex items-start gap-2">
+                              <span className={`text-xs ${
+                                msg.metadata?.commandType === 'input' ? 'text-blue-400' :
+                                msg.metadata?.commandType === 'error' ? 'text-red-400' :
+                                msg.metadata?.commandType === 'success' ? 'text-green-400' :
+                                'text-gray-400'
+                              }`}>
+                                {msg.metadata?.commandType === 'input' ? '$' : '>'}
+                              </span>
+                              <span className="flex-1 whitespace-pre-wrap text-white font-mono text-sm">{msg.content}</span>
+                            </div>
+                          ) : msg.type === 'error' ? (
+                            <div className="flex items-start gap-3">
+                              <div className="flex-shrink-0">
+                                <div className="w-8 h-8 bg-red-800 rounded-full flex items-center justify-center">
+                                  <svg className="w-6 h-6 text-red-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                  </svg>
+                                </div>
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-semibold mb-1">Build Errors Detected</div>
+                                <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
+                                <div className="mt-2 text-xs opacity-70">Press 'F' or click the Fix button above to resolve</div>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-sm whitespace-pre-wrap">{msg.content}</span>
+                          )}
+                        </CollapsibleMessage>
+                      )}
                   
                       {/* Show applied files if this is an apply success message */}
                       {msg.metadata?.appliedFiles && msg.metadata.appliedFiles.length > 0 && (
-                    <div className="mt-3 inline-block bg-gray-100 rounded-[10px] p-5">
-                      <div className="text-xs font-medium mb-3 text-gray-700">
-                        {msg.content.includes('Applied') ? 'Files Updated:' : 'Generated Files:'}
-                      </div>
-                      <div className="flex flex-wrap items-start gap-2">
-                        {msg.metadata.appliedFiles.map((filePath, fileIdx) => {
-                          const fileName = filePath.split('/').pop() || filePath;
-                          const fileExt = fileName.split('.').pop() || '';
-                          const fileType = fileExt === 'jsx' || fileExt === 'js' ? 'javascript' :
-                                          fileExt === 'css' ? 'css' :
-                                          fileExt === 'json' ? 'json' : 'text';
-                          
-                          return (
-                            <div
-                              key={`applied-${fileIdx}`}
-                              className="inline-flex items-center gap-1.5 px-6 py-1.5 bg-[#36322F] text-white rounded-[10px] text-xs animate-fade-in-up"
-                              style={{ animationDelay: `${fileIdx * 30}ms` }}
-                            >
-                              <span className={`inline-block w-1.5 h-1.5 rounded-full ${
-                                fileType === 'css' ? 'bg-blue-400' :
-                                fileType === 'javascript' ? 'bg-yellow-400' :
-                                fileType === 'json' ? 'bg-green-400' :
-                                'bg-gray-400'
-                              }`} />
-                              {fileName}
-                            </div>
-                          );
-                        })}
-                      </div>
+                    <div className="mt-3">
+                      <CollapsibleMessage
+                        summary={`✓ ${msg.metadata.appliedFiles.length} file${msg.metadata.appliedFiles.length > 1 ? 's' : ''} ${msg.content.includes('Applied') ? 'updated' : 'generated'}`}
+                        type="system"
+                        defaultOpen={false}
+                      >
+                        <div className="flex flex-wrap items-start gap-2">
+                          {msg.metadata.appliedFiles.map((filePath, fileIdx) => {
+                            const fileName = filePath.split('/').pop() || filePath;
+                            const fileExt = fileName.split('.').pop() || '';
+                            const fileType = fileExt === 'jsx' || fileExt === 'js' ? 'javascript' :
+                                            fileExt === 'css' ? 'css' :
+                                            fileExt === 'json' ? 'json' : 'text';
+                            
+                            return (
+                              <div
+                                key={`applied-${fileIdx}`}
+                                className="inline-flex items-center gap-1.5 px-6 py-1.5 bg-white/10 text-white rounded-[10px] text-xs"
+                              >
+                                <span className={`inline-block w-1.5 h-1.5 rounded-full ${
+                                  fileType === 'css' ? 'bg-blue-400' :
+                                  fileType === 'javascript' ? 'bg-yellow-400' :
+                                  fileType === 'json' ? 'bg-green-400' :
+                                  'bg-gray-400'
+                                }`} />
+                                {fileName}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </CollapsibleMessage>
                     </div>
                   )}
                   
                       {/* Show generated files for completion messages - but only if no appliedFiles already shown */}
                       {isGenerationComplete && generationProgress.files.length > 0 && idx === chatMessages.length - 1 && !msg.metadata?.appliedFiles && !chatMessages.some(m => m.metadata?.appliedFiles) && (
-                    <div className="mt-2 inline-block bg-gray-100 rounded-[10px] p-3">
-                      <div className="text-xs font-medium mb-1 text-gray-700">Generated Files:</div>
-                      <div className="flex flex-wrap items-start gap-1">
-                        {generationProgress.files.map((file, fileIdx) => (
-                          <div
-                            key={`complete-${fileIdx}`}
-                            className="inline-flex items-center gap-1.5 px-6 py-1.5 bg-[#36322F] text-white rounded-[10px] text-xs animate-fade-in-up"
-                            style={{ animationDelay: `${fileIdx * 30}ms` }}
-                          >
-                            <span className={`inline-block w-1.5 h-1.5 rounded-full ${
-                              file.type === 'css' ? 'bg-blue-400' :
-                              file.type === 'javascript' ? 'bg-yellow-400' :
-                              file.type === 'json' ? 'bg-green-400' :
-                              'bg-gray-400'
-                            }`} />
-                            {file.path.split('/').pop()}
-                          </div>
-                        ))}
-                      </div>
+                    <div className="mt-2">
+                      <CollapsibleMessage
+                        summary={`✓ ${generationProgress.files.length} file${generationProgress.files.length > 1 ? 's' : ''} generated`}
+                        type="system"
+                        defaultOpen={false}
+                      >
+                        <div className="flex flex-wrap items-start gap-2">
+                          {generationProgress.files.map((file, fileIdx) => (
+                            <div
+                              key={`complete-${fileIdx}`}
+                              className="inline-flex items-center gap-1.5 px-6 py-1.5 bg-white/10 text-white rounded-[10px] text-xs"
+                            >
+                              <span className={`inline-block w-1.5 h-1.5 rounded-full ${
+                                file.type === 'css' ? 'bg-blue-400' :
+                                file.type === 'javascript' ? 'bg-yellow-400' :
+                                file.type === 'json' ? 'bg-green-400' :
+                                'bg-gray-400'
+                              }`} />
+                              {file.path.split('/').pop()}
+                            </div>
+                          ))}
+                        </div>
+                      </CollapsibleMessage>
                     </div>
                   )}
                     </div>
@@ -3551,6 +3649,7 @@ Focus on the key sections and content, making it clean and modern.`;
               onSubmit={sendChatMessage}
               placeholder="Describe what you want to build..."
               showSearchFeatures={false}
+              disabled={generationProgress.isGenerating || loading}
             />
           </div>
         </div>

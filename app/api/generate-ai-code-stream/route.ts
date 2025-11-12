@@ -10,6 +10,7 @@ import { executeSearchPlan, formatSearchResultsForAI, selectTargetFile } from '@
 import { FileManifest } from '@/types/file-manifest';
 import type { ConversationState, ConversationMessage, ConversationEdit } from '@/types/conversation';
 import { appConfig } from '@/config/app.config';
+import { getNetworkPrompt, type BlockchainNetwork } from '@/lib/prompts';
 
 // Force dynamic route to enable streaming
 export const dynamic = 'force-dynamic';
@@ -90,11 +91,16 @@ declare global {
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt, model = 'openai/gpt-oss-20b', context, isEdit = false } = await request.json();
+    // BEFORE (commented out for reference):
+    // const { prompt, model = 'openai/gpt-oss-20b', context, isEdit = false } = await request.json();
+    
+    // AFTER: Extract chain parameter from request
+    const { prompt, model = 'openai/gpt-oss-20b', context, isEdit = false, chain } = await request.json();
     
     console.log('[generate-ai-code-stream] Received request:');
     console.log('[generate-ai-code-stream] - prompt:', prompt);
     console.log('[generate-ai-code-stream] - isEdit:', isEdit);
+    console.log('[generate-ai-code-stream] - chain:', chain || 'not specified');
     console.log('[generate-ai-code-stream] - context.sandboxId:', context?.sandboxId);
     console.log('[generate-ai-code-stream] - context.currentFiles:', context?.currentFiles ? Object.keys(context.currentFiles) : 'none');
     console.log('[generate-ai-code-stream] - currentFiles count:', context?.currentFiles ? Object.keys(context.currentFiles).length : 0);
@@ -105,6 +111,7 @@ export async function POST(request: NextRequest) {
         conversationId: `conv-${Date.now()}`,
         startedAt: Date.now(),
         lastUpdated: Date.now(),
+        selectedChain: chain || 'solana', // Store selected blockchain network
         context: {
           messages: [],
           edits: [],
@@ -112,6 +119,10 @@ export async function POST(request: NextRequest) {
           userPreferences: {}
         }
       };
+    } else if (chain && global.conversationState.selectedChain !== chain) {
+      // Update chain if it changed during conversation
+      console.log('[generate-ai-code-stream] Chain changed from', global.conversationState.selectedChain, 'to', chain);
+      global.conversationState.selectedChain = chain;
     }
     
     // Add user message to conversation history
@@ -121,7 +132,8 @@ export async function POST(request: NextRequest) {
       content: prompt,
       timestamp: Date.now(),
       metadata: {
-        sandboxId: context?.sandboxId
+        sandboxId: context?.sandboxId,
+        chain: global.conversationState.selectedChain // Track chain in message metadata
       }
     };
     global.conversationState.context.messages.push(userMessage);
@@ -576,6 +588,28 @@ Remember: You are a SURGEON making a precise incision, not an artist repainting 
         }
         
         // Build system prompt with conversation awareness
+        // BEFORE (commented out - now using network-specific prompts):
+        // let systemPrompt = `You are an expert React developer with perfect memory of the conversation. You maintain context across messages and remember scraped websites, generated components, and applied code. Generate clean, modern React code for Vite applications.
+        
+        // AFTER: Use network-specific prompt builder
+        const selectedChain = (global.conversationState?.selectedChain || chain || 'solana') as BlockchainNetwork;
+        console.log('[generate-ai-code-stream] Building prompt for blockchain:', selectedChain);
+        
+        let systemPrompt = getNetworkPrompt(selectedChain, {
+          conversationContext,
+          isEdit,
+          editContext
+        });
+        
+        // The getNetworkPrompt function handles:
+        // - Base React/Vite rules
+        // - Network-specific blockchain instructions (Solana or Celo)
+        // - Edit mode rules (if isEdit = true)
+        // - Targeted edit rules (if editContext is provided)
+        // - Code completion rules
+        
+        // OLD HARDCODED PROMPT (commented out - now using getNetworkPrompt):
+        /* 
         let systemPrompt = `You are an expert React developer with perfect memory of the conversation. You maintain context across messages and remember scraped websites, generated components, and applied code. Generate clean, modern React code for Vite applications.
 ${conversationContext}
 
@@ -926,8 +960,9 @@ CRITICAL: When files are provided in the context:
 3. Generate ONLY the files that need changes
 4. Do NOT ask to see files - they are already provided in the context above
 5. Make the requested change immediately`;
+        */ // END OF OLD HARDCODED PROMPT
 
-        // If Morph Fast Apply is enabled (edit mode + MORPH_API_KEY), force <edit> block output
+        // If Morph Fast Apply is enabled (edit mode + MORPH_API_KEY), add special instructions
         const morphFastApplyEnabled = Boolean(isEdit && process.env.MORPH_API_KEY);
         if (morphFastApplyEnabled) {
           systemPrompt += `
