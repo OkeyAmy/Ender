@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { appConfig } from "@/config/app.config";
 import { toast } from "sonner";
 import LiquidEther from "@/components/ui/LiquidEther/LiquidEther";
-import { Logo } from "@/vibe-coding-ui/components/logo";
+import { Logo } from "@/components/logo";
 import { AuthModal } from "@/components/shared/AuthModal";
 import Link from "next/link";
 import { Send, Globe, Type } from "lucide-react";
