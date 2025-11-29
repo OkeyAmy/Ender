@@ -51,7 +51,7 @@ export const appConfig = {
   // AI Model Configuration
   ai: {
     // Default AI model
-    defaultModel: 'moonshotai/kimi-k2-instruct-0905',
+    defaultModel: 'google/gemini-flash-latest',
     
     // Available models
     availableModels: [

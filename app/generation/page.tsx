@@ -142,6 +142,10 @@ function AISandboxPage() {
 
   // Store flag to trigger generation after component mounts
   const [shouldAutoGenerate, setShouldAutoGenerate] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ id: string; email: string } | null>(null);
+  const [projects, setProjects] = useState<Array<{ id: string; sandboxId: string; url: string; name?: string; createdAt: number; updatedAt: number }>>([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Clear old conversation data on component mount and create/restore sandbox
   useEffect(() => {
@@ -400,6 +404,47 @@ function AISandboxPage() {
       }, 500);
     }
   }, []);
+
+  useEffect(() => {
+    const fetchMe = async () => {
+      try {
+        const res = await fetch('/api/auth/me')
+        const data = await res.json()
+        if (data.authenticated) setCurrentUser(data.user)
+        else setCurrentUser(null)
+      } catch {}
+    }
+    fetchMe()
+  }, []);
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchProjects()
+    } else {
+      setProjects([])
+    }
+  }, [currentUser])
+
+  const fetchProjects = async () => {
+    try {
+      setLoadingProjects(true)
+      const res = await fetch('/api/projects')
+      const data = await res.json()
+      setProjects(data.projects || [])
+    } finally {
+      setLoadingProjects(false)
+    }
+  }
+
+  const saveProject = async (sandboxId: string, url: string, name?: string) => {
+    try {
+      await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sandboxId, url, name })
+      })
+    } catch {}
+  }
 
   // Auto-trigger generation when flag is set (from home page navigation)
   useEffect(() => {
@@ -660,6 +705,10 @@ function AISandboxPage() {
         log('Sandbox created successfully!');
         log(`Sandbox ID: ${data.sandboxId}`);
         log(`URL: ${data.url}`);
+        if (currentUser) {
+          await saveProject(data.sandboxId, data.url);
+          await fetchProjects();
+        }
         
         // Update URL with sandbox ID
         const newParams = new URLSearchParams(searchParams.toString());
@@ -713,6 +762,25 @@ Tip: I automatically detect and install npm packages from your code imports (lik
       sandboxCreationRef.current = false; // Reset the ref
     }
   };
+
+  const continueProject = async (p: { sandboxId: string; url: string }) => {
+    setSandboxData({ sandboxId: p.sandboxId, url: p.url })
+    const newParams = new URLSearchParams(searchParams.toString())
+    newParams.set('sandbox', p.sandboxId)
+    router.push(`/generation?${newParams.toString()}`, { scroll: false })
+    setTimeout(() => {
+      if (iframeRef.current) {
+        iframeRef.current.src = p.url
+      }
+    }, 100)
+    setTimeout(fetchSandboxFiles, 500)
+  }
+
+  const logout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    setCurrentUser(null)
+    setShowUserMenu(false)
+  }
 
   const displayStructure = (structure: any) => {
     if (typeof structure === 'object') {
@@ -3325,13 +3393,52 @@ Focus on the key sections and content, making it clean and modern.`;
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
             </svg>
           </button>
-       
+          {currentUser && (
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(v => !v)}
+                className="px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-lg text-gray-900"
+              >
+                {currentUser.email}
+              </button>
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 bg-white border border-gray-200 rounded-md overflow-hidden">
+                  <button onClick={logout} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Sign out</button>
+                </div>
+              )}
+            </div>
+          )}
+        
         </div>
       </div>
 
       <div className="flex-1 flex overflow-hidden">
         {/* Center Panel - AI Chat (1/3 of remaining width) */}
         <div className="flex-1 max-w-[400px] flex flex-col border-r border-border bg-background">
+          {currentUser && (
+            <div className="p-4 border-b border-border">
+              <div className="text-sm font-medium text-gray-900 mb-3">Your Projects</div>
+              {loadingProjects ? (
+                <div className="text-sm text-gray-500">Loading...</div>
+              ) : projects.length === 0 ? (
+                <div className="text-sm text-gray-500">No projects yet</div>
+              ) : (
+                <div className="space-y-2">
+                  {projects.map((p) => (
+                    <div key={p.id} className="flex items-center justify-between gap-2">
+                      <div className="flex-1 truncate text-sm text-gray-700">{p.name || p.url}</div>
+                      <button
+                        onClick={() => continueProject({ sandboxId: p.sandboxId, url: p.url })}
+                        className="px-2 py-1 text-xs bg-gray-900 text-white rounded"
+                      >
+                        Continue
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           {/* Sidebar Input Component */}
           {!hasInitialSubmission ? (
             <div className="p-4 border-b border-border">

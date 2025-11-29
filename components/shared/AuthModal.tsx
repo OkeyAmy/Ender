@@ -12,11 +12,30 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Auth submission:", { mode, email });
-    // Add your authentication logic here
+    if (submitting) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      const endpoint = mode === "signin" ? "/api/auth/login" : "/api/auth/signup";
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Request failed");
+        return;
+      }
+      onOpenChange(false);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleWalletConnect = () => {
@@ -172,16 +191,20 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
                 className="w-full bg-zinc-900 border border-zinc-800 text-white placeholder:text-white/40 font-mono px-5 py-4 text-base focus:outline-none focus:ring-2 focus:ring-yellow-400/50 transition-all"
                 required
               />
+              {error && (
+                <div className="text-red-400 font-mono text-sm">{error}</div>
+              )}
               
               <button
                 type="submit"
-                className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-mono font-bold py-4 px-6 text-lg transition-all flex items-center justify-center gap-3 mt-2"
+                disabled={submitting}
+                className="w-full bg-yellow-400 hover:bg-yellow-500 disabled:bg-yellow-300 text-black font-mono font-bold py-4 px-6 text-lg transition-all flex items-center justify-center gap-3 mt-2"
                 style={{
                   clipPath: "polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)"
                 }}
               >
                 <Mail className="flex-shrink-0" style={{ width: 'var(--auth-icon-size)', height: 'var(--auth-icon-size)' }} />
-                <span>{mode === "signin" ? "Sign In" : "Sign Up"}</span>
+                <span>{submitting ? "Please wait" : (mode === "signin" ? "Sign In" : "Sign Up")}</span>
               </button>
             </form>
 
