@@ -16,12 +16,10 @@ const NETWORKS = [
   { id: "celo", name: "Celo", icon: "🌿" },
 ];
 
-const MODELS = [
-  { id: "gpt-5", name: "GPT-5" },
-  { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro" },
-  { id: "claude-4.5", name: "Claude 4.5" },
-  { id: "kimi", name: "Kimi" },
-];
+const MODELS = appConfig.ai.availableModels.map((id) => ({
+  id,
+  name: appConfig.ai.modelDisplayNames?.[id] || id,
+}));
 
 export default function NewHomePage() {
   const router = useRouter();
@@ -32,10 +30,12 @@ export default function NewHomePage() {
   // Default to text mode as buttons are removed
   const [creationMode, setCreationMode] = useState<"text" | "url">("text");
   const [selectedChain, setSelectedChain] = useState<string>("solana");
-  const [selectedModel, setSelectedModel] = useState<string>("gpt-5");
+  const [selectedModel, setSelectedModel] = useState<string>(appConfig.ai.defaultModel);
   const [isTextSubmitting, setIsTextSubmitting] = useState<boolean>(false);
   const [isFadingOut, setIsFadingOut] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ id: string; email: string } | null>(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   // URL validation helper
   const isURL = (str: string): boolean => {
@@ -75,6 +75,24 @@ export default function NewHomePage() {
     }
   };
 
+  useEffect(() => {
+    const fetchMe = async () => {
+      try {
+        const res = await fetch('/api/auth/me')
+        const data = await res.json()
+        if (data.authenticated) setCurrentUser(data.user)
+        else setCurrentUser(null)
+      } catch {}
+    }
+    fetchMe()
+  }, [isAuthModalOpen])
+
+  const logout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    setCurrentUser(null)
+    setShowUserMenu(false)
+  }
+
   return (
     <div className="flex flex-col min-h-screen text-white overflow-hidden font-sans relative bg-black">
       <div className="absolute inset-0 z-0">
@@ -105,14 +123,30 @@ export default function NewHomePage() {
           <Link href="/">
             <Logo className="w-[100px] md:w-[120px] text-white" />
           </Link>
-          <div 
-               onClick={() => setIsAuthModalOpen(true)}
-               className="relative bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-3 px-8 text-lg transition-all duration-200 cursor-pointer select-none tracking-wide"
-               style={{
-                 clipPath: "polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)"
-               }}>
-             SIGN IN
-          </div>
+          {!currentUser ? (
+            <div
+              onClick={() => setIsAuthModalOpen(true)}
+              className="relative bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-3 px-8 text-lg transition-all duration-200 cursor-pointer select-none tracking-wide"
+              style={{ clipPath: "polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)" }}
+            >
+              SIGN IN
+            </div>
+          ) : (
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(v => !v)}
+                className="relative bg-white text-black font-bold py-3 px-8 text-lg transition-all duration-200 cursor-pointer select-none tracking-wide border border-zinc-300"
+                style={{ clipPath: "polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)" }}
+              >
+                {currentUser.email}
+              </button>
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 bg-black border border-zinc-700 rounded-md overflow-hidden">
+                  <button onClick={logout} className="block w-full text-left px-4 py-2 text-white hover:bg-zinc-800">Sign out</button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </header>
 
