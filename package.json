@@ -48,7 +48,7 @@
     "@tailwindcss/typography": "^0.5.16",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@vercel/sandbox": "^0.0.17",
-    "ai": "^5.0.0",
+    "ai": "^5.0.52",
     "autoprefixer": "^10.4.21",
     "class-variance-authority": "^0.7.1",
     "classnames": "^2.5.1",
