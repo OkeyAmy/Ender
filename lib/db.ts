@@ -69,6 +69,6 @@ export async function upsertProject(userId: string, sandboxId: string, url: stri
     { upsert: true, returnDocument: 'after' }
   )
   // Mongo can return null pre-insert; re-fetch to be safe
-  const doc = result.value || await db.collection<Project>('projects').findOne({ userId, sandboxId })
+  const doc = result || await db.collection<Project>('projects').findOne({ userId, sandboxId })
   return doc as Project
 }

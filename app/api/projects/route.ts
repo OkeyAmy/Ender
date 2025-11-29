@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { getSession, getProjectsByUser, upsertProject } from '@/lib/db'
 
 export async function GET() {
-  const sid = cookies().get('sid')?.value
+  const sid = (await cookies()).get('sid')?.value
   if (!sid) return NextResponse.json({ projects: [] })
   const session = await getSession(sid)
   if (!session) return NextResponse.json({ projects: [] })
@@ -12,7 +12,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const sid = cookies().get('sid')?.value
+  const sid = (await cookies()).get('sid')?.value
   if (!sid) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const session = await getSession(sid)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

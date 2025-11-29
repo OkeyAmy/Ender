@@ -18,9 +18,7 @@ export async function getDb(): Promise<Db> {
     client = new MongoClient(uri, { maxPoolSize: 10 })
     global._mongoClient = client
   }
-  if (!client.topology?.isConnected()) {
-    await client.connect()
-  }
+  await client.connect()
   db = client.db(dbName)
 
   // Ensure indexes

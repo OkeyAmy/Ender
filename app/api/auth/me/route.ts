@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { getSession, getUserById } from '@/lib/db'
 
 export async function GET() {
-  const sid = cookies().get('sid')?.value
+  const sid = (await cookies()).get('sid')?.value
   if (!sid) return NextResponse.json({ authenticated: false }, { status: 200 })
   const session = await getSession(sid)
   if (!session) return NextResponse.json({ authenticated: false }, { status: 200 })
