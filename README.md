@@ -20,11 +20,7 @@ Leveraging state-of-the-art AI models (including Claude 3.5 Sonnet, GPT-4o, and 
 - Frontend UI/UX design with Tailwind CSS
 - Wallet connection and state management
 
-### 🕸️ Open Lovable Scraping Engine
-Ender uses the **Open Lovable** scraping technology to gather real-time data and context for your applications. This enables you to:
-- Clone and adapt existing UI patterns
-- Ingest documentation for new protocols instantly
-- Pull specific web content to inform your dapp's logic
+
 
 ### 🛡️ Secure Sandboxed Environment
 All code generation and execution happen within a secure, isolated sandbox environment. This ensures:
@@ -48,7 +44,7 @@ Ender is optimized for high-performance blockchains:
 Ender is built on a modern, scalable stack:
 
 - **Frontend:** Next.js 15 (App Router), TypeScript, Tailwind CSS
-- **AI Orchestration:** Open Lovable Engine (Python/Node.js hybrid)
+- **AI Orchestration**
 - **Sandboxing:** Vercel Sandbox / E2B
 - **Blockchain Integration:** Solana Web3.js, Celo SDK
 
@@ -65,7 +61,7 @@ Follow these steps to set up Ender locally.
 
 1. **Clone & Install**
    ```bash
-   git clone https://github.com/your-org/ender.git
+   git clone https://github.com/OkeyAmy/Ender.git
    cd ender
    pnpm install  # or npm install / yarn install
    ```
@@ -94,8 +90,7 @@ Follow these steps to set up Ender locally.
 ## 📖 Usage
 
 1. **Describe your Dapp:** Enter a prompt like "Create a staking dashboard for Celo that allows users to deposit cUSD and earn rewards."
-2. **Refine with Context:** Optionally provide URLs to existing dapps or documentation for Ender to analyze using the Open Lovable scraper.
-3. **Iterate:** Watch as Ender builds your app in real-time. Chat with the AI to refine the design, add features, or fix bugs.
+2. **Iterate:** Watch as Ender builds your app in real-time. Chat with the AI to refine the design, add features, or fix bugs.
 4. **Deploy:** Once satisfied, export your code or deploy directly to the blockchain.
 
 ## 🧩 Project Structure
