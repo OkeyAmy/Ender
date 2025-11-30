@@ -1,48 +1,117 @@
-# ender
+# Ender
 
-Vibe-code blockchain dapps in minutes. An AI-powered dapp builder for Solana and Celo. Built with [Firecrawl](https://firecrawl.dev/?ref=open-lovable-github) web scraping technology.
+**Democratizing Blockchain Development with AI**
 
-<img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExODAwZGJzcDVmZGYxc3MyNDUycTliYnAwem1qbzhtNHh0c2JrNDdmZCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/LMYzMkNmOecj3yFw81/giphy.gif" alt="Open Lovable Demo" width="100%"/>
+> **Ender** democratizes blockchain development by allowing anyone to build sophisticated decentralized applications (dapps) simply by describing them. By combining advanced AI code generation with robust web scraping capabilities, Ender turns natural language into deployed, functional dapps on Solana and Celo in minutes, not months.
 
-## Setup
+![Ender Banner](public/og-image.png)
+
+## 🚀 Overview
+
+Ender is a production-ready platform that bridges the gap between natural language and blockchain deployment. Built on the powerful **Open Lovable** engine, Ender empowers developers and non-developers alike to create complex, production-grade dapps without writing boilerplate code.
+
+Whether you need a DeFi dashboard, an NFT marketplace, or a DAO governance portal, Ender understands your intent, scrapes necessary context from the web, and generates secure, optimized code tailored for the **Solana** and **Celo** ecosystems.
+
+## ✨ Key Features
+
+### 🧠 AI-Powered Dapp Generation
+Leveraging state-of-the-art AI models (including Claude 3.5 Sonnet, GPT-4o, and Gemini), Ender translates natural language into full-stack blockchain applications. It handles:
+- Smart contract integration
+- Frontend UI/UX design with Tailwind CSS
+- Wallet connection and state management
+
+### 🕸️ Open Lovable Scraping Engine
+Ender uses the **Open Lovable** scraping technology to gather real-time data and context for your applications. This enables you to:
+- Clone and adapt existing UI patterns
+- Ingest documentation for new protocols instantly
+- Pull specific web content to inform your dapp's logic
+
+### 🛡️ Secure Sandboxed Environment
+All code generation and execution happen within a secure, isolated sandbox environment. This ensures:
+- **Safety:** Malicious code cannot affect your host system.
+- **Reproducibility:** Consistent builds every time.
+- **Real-time Preview:** See your dapp come to life instantly as the AI builds it.
+
+### ⛓️ Multi-Chain Support
+Ender is optimized for high-performance blockchains:
+- **Solana:** Build ultra-fast, low-fee dapps.
+- **Celo:** Create mobile-first, carbon-negative financial applications.
+
+### 🧰 Developer Ergonomics
+- Next.js 15 + TypeScript + Tailwind CSS front-end
+- AI orchestration through the Open Lovable engine
+- Built-in sandboxing via Vercel Sandbox or E2B
+- Ready-to-use integrations for Solana Web3.js and the Celo SDK
+
+## 🏗️ Architecture
+
+Ender is built on a modern, scalable stack:
+
+- **Frontend:** Next.js 15 (App Router), TypeScript, Tailwind CSS
+- **AI Orchestration:** Open Lovable Engine (Python/Node.js hybrid)
+- **Sandboxing:** Vercel Sandbox / E2B
+- **Blockchain Integration:** Solana Web3.js, Celo SDK
+
+## 🛠️ Getting Started
+
+Follow these steps to set up Ender locally.
 
 ### Prerequisites
-
-- Node.js 18+ 
+- Node.js 18+
 - pnpm, npm, or yarn
-- API keys for required services (see Environment Variables section)
+- API keys for required services (see [Environment Variables](#environment-variables))
 
 ### Installation
 
 1. **Clone & Install**
-```bash
-git clone https://github.com/firecrawl/open-lovable.git
-cd open-lovable
-pnpm install  # or npm install / yarn install
-```
+   ```bash
+   git clone https://github.com/your-org/ender.git
+   cd ender
+   pnpm install  # or npm install / yarn install
+   ```
 
 2. **Configure Environment Variables**
 
-Copy the `.env.example` file to `.env.local`:
-```bash
-cp .env.example .env.local
-```
+   Copy the `.env.example` file to `.env.local`:
+   ```bash
+   cp .env.example .env.local
+   ```
 
-Then edit `.env.local` and add your API keys. See the [Environment Variables](#environment-variables) section below for detailed recommendations.
+   Then edit `.env.local` and add your API keys. See the [Environment Variables](#environment-variables) section below for detailed recommendations.
 
-**Quick Start (Minimum Required):**
-- At least one web scraper API key (`FIRECRAWL_API_KEY` recommended)
-- At least one AI provider API key (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, or `GROQ_API_KEY`)
-- Sandbox provider configuration (Vercel or E2B)
+   **Quick Start (Minimum Required):**
+   - At least one web scraper API key (`FIRECRAWL_API_KEY` recommended)
+   - At least one AI provider API key (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, or `GROQ_API_KEY`)
+   - Sandbox provider configuration (Vercel or E2B)
 
 3. **Run the Application**
-```bash
-pnpm dev  # or npm run dev / yarn dev
-```
+   ```bash
+   pnpm dev  # or npm run dev / yarn dev
+   ```
 
-Open [http://localhost:3000](http://localhost:3000)
+   Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Environment Variables
+## 📖 Usage
+
+1. **Describe your Dapp:** Enter a prompt like "Create a staking dashboard for Celo that allows users to deposit cUSD and earn rewards."
+2. **Refine with Context:** Optionally provide URLs to existing dapps or documentation for Ender to analyze using the Open Lovable scraper.
+3. **Iterate:** Watch as Ender builds your app in real-time. Chat with the AI to refine the design, add features, or fix bugs.
+4. **Deploy:** Once satisfied, export your code or deploy directly to the blockchain.
+
+## 🧩 Project Structure
+- `app/`: Next.js App Router pages and API routes
+- `components/`, `atoms/`: Shared UI components
+- `lib/`, `utils/`: Core helpers, SDK utilities, and AI orchestration logic
+- `public/`: Static assets (including the Open Graph banner)
+- `styles/`, `tailwind.config.ts`: Styling configuration
+
+## 📦 Scripts
+- `pnpm dev` — Start the local development server
+- `pnpm lint` — Run linting
+- `pnpm test` — Run automated tests (if configured)
+- `pnpm build` — Create a production build
+
+## 🌐 Environment Variables
 
 ### Required Variables
 
@@ -105,7 +174,7 @@ Open [http://localhost:3000](http://localhost:3000)
 - **Recommended**: `vercel` for most users, `e2b` for advanced use cases
 - **Description**: Choose your sandbox execution environment
 - **Options**: `vercel` (default) or `e2b`
-- **Use case**: 
+- **Use case**:
   - `vercel`: Better integration, easier setup, recommended for most users
   - `e2b`: More control, longer timeout (30min vs 15min), better for complex builds
 
@@ -125,7 +194,7 @@ Choose ONE authentication method:
 - **Required**: Yes (if using Vercel sandbox and Method B)
 - **Recommended**: For production deployments
 - **Description**: Personal access token with team and project IDs
-- **Get it**: 
+- **Get it**:
   - Token: [Vercel Dashboard → Settings → Tokens](https://vercel.com/account/tokens)
   - Team ID: Found in team settings URL or API
   - Project ID: Found in project settings
@@ -198,107 +267,15 @@ Choose ONE authentication method:
 - **Description**: Automatically restart Vite dev server after package installation
 - **Default**: Not set (manual restart required)
 - **Use case**: Automatic dev server refresh after installing packages
-- **Example**: `true` to enable
-- **Performance**: Reduces manual steps, faster iteration
 
-#### Advanced Configuration
+## 🤝 Contributing
+We welcome contributions to Ender! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to submit pull requests, report issues, and suggest improvements.
 
-**ANTHROPIC_BASE_URL**
-- **Required**: No
-- **Recommended**: Only if using custom Anthropic endpoint
-- **Description**: Custom base URL for Anthropic API
-- **Default**: `https://api.anthropic.com/v1`
-- **Use case**: Custom API endpoints, proxies, or self-hosted solutions
-- **Example**: `https://custom-proxy.com/v1`
+## 📄 License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-**OPENAI_BASE_URL**
-- **Required**: No
-- **Recommended**: Only if using custom OpenAI endpoint
-- **Description**: Custom base URL for OpenAI API
-- **Default**: Standard OpenAI endpoint
-- **Use case**: Custom API endpoints, proxies, or self-hosted solutions
-- **Example**: `https://custom-proxy.com/v1`
+---
 
-## Features
-
-### Web Scraping Options
-
-ender supports two web scraping providers:
-
-1. **Firecrawl** (Default)
-   - Fast and reliable web scraping with caching
-   - Screenshot capture support
-   - Best for most websites
-   - Get your API key at [firecrawl.dev](https://firecrawl.dev)
-
-2. **ScrapeGraph AI** (Alternative)
-   - AI-powered intelligent web scraping
-   - Advanced content extraction
-   - Better for complex or dynamic pages
-   - Get your API key at [scrapegraphai.com](https://scrapegraphai.com)
-
-You can switch between scrapers in the UI when entering a URL. Your preference is saved automatically.
-
-**Note:** At least one scraper API key is required. You can configure both and switch between them as needed.
-
-### AI Code Generation
-
-ender supports multiple AI providers for code generation:
-
-- **Anthropic Claude**: Best quality, slower (recommended for complex projects)
-- **OpenAI GPT**: Fast and high quality (good balance)
-- **Google Gemini**: Fast, good for experimentation
-- **Groq**: Ultra-fast inference (best for rapid iterations)
-
-You can configure multiple providers and switch between them in the UI.
-
-### Sandbox Execution
-
-Code is executed in isolated sandbox environments:
-
-- **Vercel Sandbox**: Easy setup, 15-minute timeout, better integration
-- **E2B Sandbox**: More control, 30-minute timeout, better for complex builds
-
-### Fast Apply (Morph)
-
-When `MORPH_API_KEY` is configured, code edits are applied faster using Morph LLM's fast apply feature. This can reduce edit time by 50-70%.
-
-## Troubleshooting
-
-### Common Issues
-
-**Issue: "API key not found" errors**
-- **Solution**: Ensure `.env.local` exists and contains the required API keys
-- **Check**: Verify variable names match exactly (case-sensitive)
-- **Tip**: Copy from `.env.example` to ensure correct format
-
-**Issue: Sandbox creation fails**
-- **Solution**: Verify sandbox provider credentials are correct
-- **Vercel**: Ensure OIDC token is valid or all three (token, team ID, project ID) are set
-- **E2B**: Verify E2B API key is valid and has credits
-
-**Issue: Package installation fails**
-- **Solution**: Set `NPM_FLAGS=--legacy-peer-deps` in `.env.local`
-- **Alternative**: Try `NPM_FLAGS=--force` for stubborn conflicts
-
-**Issue: Internal API calls fail in production**
-- **Solution**: Set `NEXT_PUBLIC_APP_URL` to your production URL
-- **Example**: `NEXT_PUBLIC_APP_URL=https://your-app.vercel.app`
-
-**Issue: Slow code generation**
-- **Solution**: Use `GROQ_API_KEY` for fastest inference
-- **Alternative**: Enable `MORPH_API_KEY` for faster edits
-
-**Issue: Debugging issues**
-- **Solution**: Set `DEBUG=true` in `.env.local` to enable debug logging
-- **Check**: Check browser console and server logs for detailed error messages
-
-### Getting Help
-
-- Check the [Issues](https://github.com/firecrawl/open-lovable/issues) page
-- Review API provider documentation for key setup
-- Ensure all required environment variables are set
-
-## License
-
-MIT
+<div align="center">
+  Built with ❤️ by the Ender Team
+</div>
