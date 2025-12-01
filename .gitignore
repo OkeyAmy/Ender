@@ -59,4 +59,4 @@ bun.lockb
 .env*.local
 
 # Ignore vibe-coding-ui directory
-# vibe-coding-ui/
+vibe-coding-ui/
