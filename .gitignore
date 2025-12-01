@@ -58,5 +58,5 @@ repomix-output.txt
 bun.lockb
 .env*.local
 
-
-vibe-coding-ui/*
+# Ignore vibe-coding-ui directory
+# vibe-coding-ui/
