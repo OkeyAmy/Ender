@@ -48,6 +48,34 @@ Ender is built on a modern, scalable stack:
 - **Sandboxing:** Vercel Sandbox / E2B
 - **Blockchain Integration:** Solana Web3.js, Celo SDK
 
+## ⚡ Performance & Capabilities
+
+### Build Speed Comparison
+
+| AI Provider | Initial Generation | Edit Speed | Quality | Cost |
+|------------|-------------------|------------|---------|------|
+| Claude 3.5 Sonnet | ~45-90s | ~20-40s | ⭐⭐⭐⭐⭐ | $$$ |
+| GPT-4o | ~30-60s | ~15-30s | ⭐⭐⭐⭐ | $$ |
+| GROQ (Llama) | ~10-20s | ~5-10s | ⭐⭐⭐ | $ |
+| Gemini Pro | ~25-50s | ~12-25s | ⭐⭐⭐⭐ | $$ |
+
+*With MORPH_API_KEY enabled, edit speeds improve by 50-70%*
+
+### Sandbox Comparison
+
+| Feature | Vercel Sandbox | E2B Sandbox |
+|---------|---------------|-------------|
+| Timeout | 15 minutes | 30 minutes |
+| Setup | Easier | Moderate |
+| Integration | Native | API-based |
+| Best For | Most projects | Complex builds |
+
+### What You Can Build
+
+- **Simple dapps:** Token displays, wallet connectors, basic forms (2-5 minutes)
+- **Medium complexity:** Swap interfaces, staking dashboards, NFT galleries (5-15 minutes)
+- **Complex applications:** Full DEX, lending protocols, DAO platforms (15-30 minutes)
+
 ## 🛠️ Getting Started
 
 Follow these steps to set up Ender locally.
@@ -89,9 +117,36 @@ Follow these steps to set up Ender locally.
 
 ## 📖 Usage
 
+### Basic Workflow
+
 1. **Describe your Dapp:** Enter a prompt like "Create a staking dashboard for Celo that allows users to deposit cUSD and earn rewards."
 2. **Iterate:** Watch as Ender builds your app in real-time. Chat with the AI to refine the design, add features, or fix bugs.
+3. **Preview:** Test your dapp in the live sandbox environment with real wallet connections.
 4. **Deploy:** Once satisfied, export your code or deploy directly to the blockchain.
+
+### Example Prompts
+
+**DeFi Applications:**
+- "Build a token swap interface for Solana with Jupiter integration"
+- "Create a yield farming dashboard showing APY and TVL for Celo pools"
+- "Design a lending protocol UI with collateral management"
+
+**NFT Projects:**
+- "Build an NFT minting page with Metaplex on Solana"
+- "Create an NFT gallery with filtering and search capabilities"
+- "Design a marketplace for buying and selling NFTs with offer system"
+
+**DAO & Governance:**
+- "Create a DAO voting interface with proposal creation and voting"
+- "Build a treasury management dashboard for multi-sig wallets"
+- "Design a token-gated community portal"
+
+### Tips for Best Results
+
+- **Be specific:** Include details about features, design preferences, and blockchain interactions
+- **Iterate incrementally:** Make one change at a time for better results
+- **Reference existing dapps:** Mention similar projects for style inspiration
+- **Specify chains:** Clearly state whether you're building for Solana or Celo
 
 ## 🧩 Project Structure
 - `app/`: Next.js App Router pages and API routes
@@ -262,6 +317,94 @@ Choose ONE authentication method:
 - **Description**: Automatically restart Vite dev server after package installation
 - **Default**: Not set (manual restart required)
 - **Use case**: Automatic dev server refresh after installing packages
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+**"No API key found" error**
+- Ensure you've copied `.env.example` to `.env.local`
+- Verify at least one AI provider key and one scraper key are set
+- Restart the dev server after adding environment variables
+
+**Sandbox timeout errors**
+- Switch to E2B sandbox for longer timeout (30min vs 15min)
+- Set `SANDBOX_PROVIDER=e2b` and add `E2B_API_KEY`
+- Break complex builds into smaller iterations
+
+**Package installation failures**
+- Add `NPM_FLAGS=--legacy-peer-deps` to `.env.local`
+- Enable `AUTO_RESTART_VITE=true` for automatic restarts
+- Clear node_modules and reinstall: `rm -rf node_modules && pnpm install`
+
+**Slow code generation**
+- Use GROQ for fastest inference
+- Enable `MORPH_API_KEY` for 50-70% faster edits
+- Consider using Vercel AI Gateway for caching
+
+**Web scraping failures**
+- Add both `FIRECRAWL_API_KEY` and `SCRAPEGRAPH_API_KEY` for redundancy
+- Check API key validity and rate limits
+- Verify the target URL is accessible
+
+### Getting Help
+
+- **Issues:** [GitHub Issues](https://github.com/OkeyAmy/Ender/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/OkeyAmy/Ender/discussions)
+- **Documentation:** Check inline code comments and API docs
+
+## 🚀 Deployment
+
+### Vercel (Recommended)
+
+1. Push your code to GitHub
+2. Import project in [Vercel Dashboard](https://vercel.com/new)
+3. Add all environment variables from `.env.local`
+4. Set `NEXT_PUBLIC_APP_URL` to your deployment URL
+5. Deploy
+
+### Self-Hosting
+
+```bash
+# Build for production
+pnpm build
+
+# Start production server
+pnpm start
+```
+
+**Requirements:**
+- Node.js 18+ runtime
+- All environment variables configured
+- HTTPS recommended for wallet connections
+
+## ❓ FAQ
+
+**Q: Which AI provider should I use?**
+A: For best quality, use Anthropic Claude. For speed, use GROQ. For balance, use OpenAI. You can configure multiple providers and switch between them.
+
+**Q: Can I use Ender without blockchain knowledge?**
+A: Yes! Ender handles the blockchain complexity. Just describe what you want to build, and the AI generates the necessary smart contract integrations.
+
+**Q: How much do the API services cost?**
+A: Most providers offer free tiers:
+- Anthropic: $5 free credit
+- OpenAI: Pay-as-you-go
+- GROQ: Generous free tier
+- Firecrawl: 500 free credits/month
+- E2B: Free tier available
+
+**Q: Can I deploy to other blockchains besides Solana and Celo?**
+A: Currently, Ender is optimized for Solana and Celo. Support for additional chains can be added by extending the blockchain integration layer.
+
+**Q: Is the generated code production-ready?**
+A: The code is a strong starting point but should be audited before production use, especially for smart contracts handling real funds.
+
+**Q: Can I customize the generated UI?**
+A: Absolutely! Chat with the AI to iterate on design, colors, layouts, and functionality. You can also export the code and customize it manually.
+
+**Q: What's the difference between Vercel and E2B sandboxes?**
+A: Vercel offers 15-minute timeout with better integration. E2B provides 30-minute timeout with more control. Choose based on your build complexity.
 
 ## 🤝 Contributing
 We welcome contributions to Ender! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to submit pull requests, report issues, and suggest improvements.
