@@ -168,6 +168,12 @@ export default function NewHomePage() {
             clipPath: "polygon(0 24px, 24px 0, calc(100% - 24px) 0, 100% 24px, 100% calc(100% - 24px), calc(100% - 24px) 100%, 24px 100%, 0 calc(100% - 24px))"
           }}
         >
+            {isTextSubmitting && (
+              <div className="absolute inset-2 z-20 rounded-[24px] bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
+                <div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+                <p className="text-white font-semibold tracking-wide">Sending build...</p>
+              </div>
+            )}
             <div className="p-6 sm:p-10 flex flex-col gap-8">
                 <textarea
                     value={textBrief}

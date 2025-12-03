@@ -6,7 +6,8 @@ import { toast } from 'sonner';
 import { appConfig } from '@/config/app.config';
 import HeroInput from '@/components/HeroInput';
 import SidebarInput from '@/components/app/generation/SidebarInput';
-import HeaderBrandKit from '@/components/shared/header/BrandKit/BrandKit';
+import Link from 'next/link';
+import { Logo } from '@/components/logo';
 import { HeaderProvider } from '@/components/shared/header/HeaderContext';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -111,6 +112,8 @@ function AISandboxPage() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
   const codeDisplayRef = useRef<HTMLDivElement>(null);
+  const sandboxRecoveryInProgressRef = useRef(false);
+  const lastSandboxRecoveryRef = useRef<number | null>(null);
 
   const [codeApplicationState, setCodeApplicationState] = useState<CodeApplicationState>({
     stage: null
@@ -143,6 +146,7 @@ function AISandboxPage() {
   });
 
   const [buildErrors, setBuildErrors] = useState<Array<{ type: string; message: string; package?: string }>>([]);
+  const [sandboxErrorMessage, setSandboxErrorMessage] = useState<string | null>(null);
   const [showSandboxRefreshBanner, setShowSandboxRefreshBanner] = useState(false);
 
   // Store flag to trigger generation after component mounts
@@ -1347,6 +1351,58 @@ Tip: I automatically detect and install npm packages from your code imports (lik
     await applyGeneratedCode(code, isEdit);
   };
 
+  const reapplyLastGeneration = async () => {
+    if (!conversationContext.lastGeneratedCode) {
+      addChatMessage('No previous generation to re-apply', 'system');
+      return;
+    }
+
+    if (!sandboxData) {
+      addChatMessage('Please create a sandbox first', 'system');
+      return;
+    }
+
+    addChatMessage('Re-applying last generation...', 'system');
+    const isEdit = conversationContext.appliedCode.length > 0;
+    await applyGeneratedCode(conversationContext.lastGeneratedCode, isEdit);
+  };
+
+  const handleSandboxFailure = async (message?: string) => {
+    setSandboxErrorMessage(message || 'The sandbox connection was lost. Please refresh to continue.');
+    setShowSandboxRefreshBanner(true);
+    setBuildErrors([]);
+
+    if (sandboxRecoveryInProgressRef.current) {
+      return;
+    }
+
+    const now = Date.now();
+    if (lastSandboxRecoveryRef.current && now - lastSandboxRecoveryRef.current < 15000) {
+      return;
+    }
+
+    if (!conversationContext.lastGeneratedCode || !sandboxData) {
+      addChatMessage('Sandbox error detected but there is no previous generation to re-apply yet.', 'system');
+      return;
+    }
+
+    sandboxRecoveryInProgressRef.current = true;
+    lastSandboxRecoveryRef.current = now;
+
+    const errorText = message
+      ? `I detected the sandbox build failed (${message}).`
+      : 'I detected the sandbox build failed.';
+    addChatMessage(`${errorText} Re-applying the last generation to rebuild your preview.`, 'ai');
+
+    try {
+      await reapplyLastGeneration();
+    } catch (error) {
+      addChatMessage(`Failed to refresh sandbox automatically: ${(error as Error).message}`, 'error');
+    } finally {
+      sandboxRecoveryInProgressRef.current = false;
+    }
+  };
+
   const handleBuildError = (errors: Array<{ type: string; message: string; package?: string }>) => {
     // Check if this is a sandbox connection error
     const isSandboxError = errors.some(e =>
@@ -1354,8 +1410,8 @@ Tip: I automatically detect and install npm packages from your code imports (lik
     );
 
     if (isSandboxError) {
-      // Show refresh banner instead of fix button for sandbox errors
-      setShowSandboxRefreshBanner(true);
+      const sandboxMessage = errors.find(e => e.type === 'http-error')?.message || errors[0]?.message;
+      handleSandboxFailure(sandboxMessage);
       return;
     }
 
@@ -1370,6 +1426,11 @@ Tip: I automatically detect and install npm packages from your code imports (lik
   };
 
   const fixBuildError = async () => {
+    if (showSandboxRefreshBanner) {
+      addChatMessage('The sandbox needs to be refreshed. Use the Refresh button inside the sandbox error panel to reapply the last generation.', 'system');
+      return;
+    }
+
     if (buildErrors.length === 0) return;
 
     const error = buildErrors[0];
@@ -1950,16 +2011,22 @@ Tip: I automatically detect and install npm packages from your code imports (lik
                   </div>
                   <div className="flex-1">
                     <h4 className="font-semibold mb-1">Sandbox Disconnected</h4>
-                    <p className="text-sm text-red-100 mb-3">The sandbox connection was lost. Please refresh to reconnect.</p>
-                    <div className="flex gap-2">
+                    <p className="text-sm text-red-100 mb-3">
+                      {sandboxErrorMessage || 'The sandbox connection was lost. Please refresh to reconnect.'}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
                       <button
-                        onClick={() => window.location.reload()}
-                        className="px-3 py-1.5 bg-white text-red-600 rounded text-sm font-medium hover:bg-red-50 transition-colors"
+                        onClick={() => reapplyLastGeneration()}
+                        disabled={!conversationContext.lastGeneratedCode || !sandboxData || loading}
+                        className="px-3 py-1.5 bg-white text-red-600 rounded text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Refresh Page
+                        Refresh Sandbox
                       </button>
                       <button
-                        onClick={() => setShowSandboxRefreshBanner(false)}
+                        onClick={() => {
+                          setShowSandboxRefreshBanner(false);
+                          setSandboxErrorMessage(null);
+                        }}
                         className="px-3 py-1.5 bg-red-600 text-white rounded text-sm font-medium hover:bg-red-700 transition-colors"
                       >
                         Dismiss
@@ -1967,7 +2034,10 @@ Tip: I automatically detect and install npm packages from your code imports (lik
                     </div>
                   </div>
                   <button
-                    onClick={() => setShowSandboxRefreshBanner(false)}
+                    onClick={() => {
+                      setShowSandboxRefreshBanner(false);
+                      setSandboxErrorMessage(null);
+                    }}
                     className="flex-shrink-0 text-white hover:text-red-100"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2488,22 +2558,6 @@ Tip: I automatically detect and install npm packages from your code imports (lik
     } finally {
       setLoading(false);
     }
-  };
-
-  const reapplyLastGeneration = async () => {
-    if (!conversationContext.lastGeneratedCode) {
-      addChatMessage('No previous generation to re-apply', 'system');
-      return;
-    }
-
-    if (!sandboxData) {
-      addChatMessage('Please create a sandbox first', 'system');
-      return;
-    }
-
-    addChatMessage('Re-applying last generation...', 'system');
-    const isEdit = conversationContext.appliedCode.length > 0;
-    await applyGeneratedCode(conversationContext.lastGeneratedCode, isEdit);
   };
 
   // Auto-scroll code display to bottom when streaming
@@ -3494,7 +3548,9 @@ Focus on the key sections and content, making it clean and modern.`;
     <HeaderProvider>
       <div className="font-sans bg-background text-foreground h-screen flex flex-col">
         <div className="bg-white py-[15px] py-[8px] border-b border-border-faint flex items-center justify-between shadow-sm">
-          <HeaderBrandKit />
+          <Link href="/" className="flex items-center gap-2">
+            <Logo className="text-black text-xl" />
+          </Link>
           <div className="flex items-center gap-2">
             {/* Model Selector - Left side */}
             <select
@@ -4016,7 +4072,7 @@ Focus on the key sections and content, making it clean and modern.`;
                   if (status !== 200) {
                     // Check if this is a server error (500s) which indicates sandbox crash
                     if (status >= 500) {
-                      setShowSandboxRefreshBanner(true);
+                      handleSandboxFailure(`Status ${status}: ${statusText}`);
                     } else {
                       handleBuildError([{
                         type: 'http-error',
@@ -4027,6 +4083,9 @@ Focus on the key sections and content, making it clean and modern.`;
                     // Clear errors if status is back to 200
                     setBuildErrors(prev => prev.filter(e => e.type !== 'http-error'));
                     setShowSandboxRefreshBanner(false);
+                    setSandboxErrorMessage(null);
+                    lastSandboxRecoveryRef.current = null;
+                    sandboxRecoveryInProgressRef.current = false;
                   }
                 }}
               />
