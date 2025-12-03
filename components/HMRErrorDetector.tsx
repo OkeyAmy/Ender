@@ -1,7 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, RefObject } from 'react';
 
 interface HMRErrorDetectorProps {
-  iframeRef: React.RefObject<HTMLIFrameElement>;
+  iframeRef: RefObject<HTMLIFrameElement | null>;
   onErrorDetected: (errors: Array<{ type: string; message: string; package?: string }>) => void;
 }
 
@@ -23,7 +23,7 @@ export default function HMRErrorDetector({ iframeRef, onErrorDetected }: HMRErro
           const messageElement = errorOverlay.shadowRoot?.querySelector('.message-body');
           if (messageElement) {
             const errorText = messageElement.textContent || '';
-            
+
             // Parse import errors
             const importMatch = errorText.match(/Failed to resolve import "([^"]+)"/);
             if (importMatch) {
