@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Roboto_Mono } from "next/font/google";
 import localFont from "next/font/local";
+import Script from "next/script";
 import "./globals.css";
 
 const inter = Inter({ 
@@ -38,6 +39,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} ${geistSans.variable} ${geistMono.variable} ${robotoMono.variable} font-sans`}>
+        <Script id="disable-console-ninja" strategy="beforeInteractive">
+          {`
+            // Prevent Console Ninja from hijacking console output in the browser.
+            window._consoleNinjaAllowedToStart = false;
+            window._triedToInstallGlobalErrorHandler = true;
+            window._triedToInstallNetworkLoggingHandler = true;
+          `}
+        </Script>
         {children}
       </body>
     </html>
