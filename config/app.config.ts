@@ -59,7 +59,8 @@ export const appConfig = {
       'moonshotai/kimi-k2-instruct-0905',
       'anthropic/claude-sonnet-4-20250514',
       // 'google/gemini-2.0-flash-exp' 
-      'google/gemini-flash-latest'
+      'google/gemini-flash-latest',
+      'chaingpt'
     ],
     
     // Model display names
@@ -68,8 +69,8 @@ export const appConfig = {
       'moonshotai/kimi-k2-instruct-0905': 'Kimi K2 (Groq)',
       'anthropic/claude-sonnet-4-20250514': 'Sonnet 4',
       // 'google/gemini-2.0-flash-exp': 'Gemini 2.0 Flash (Experimental)',
-      'google/gemini-flash-latest': 'Gemini Flash (Latest)'
-
+      'google/gemini-flash-latest': 'Gemini Flash (Latest)',
+      'chaingpt': 'ChainGPT'
     } as Record<string, string>,
     
     // Model API configuration

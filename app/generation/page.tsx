@@ -27,6 +27,7 @@ import { motion } from 'framer-motion';
 import CodeApplicationProgress, { type CodeApplicationState } from '@/components/CodeApplicationProgress';
 import CollapsibleMessage from '@/components/app/generation/CollapsibleMessage';
 import HMRErrorDetector from '@/components/HMRErrorDetector';
+import { ChainGPTIndicator } from '@/components/chaingpt/StatusIndicator';
 
 interface SandboxData {
   sandboxId: string;
@@ -78,7 +79,7 @@ function AISandboxPage() {
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
   const [creationMode, setCreationMode] = useState<'url' | 'text'>('url');
   const [textBrief, setTextBrief] = useState('');
-  const [selectedChain, setSelectedChain] = useState<'solana' | 'celo'>('solana');
+  const [selectedChain, setSelectedChain] = useState<'solana' | 'celo' | 'bnb'>('bnb');
   const [enable3DDepth, setEnable3DDepth] = useState(false);
   const [showLoadingBackground, setShowLoadingBackground] = useState(false);
   const [urlScreenshot, setUrlScreenshot] = useState<string | null>(null);
@@ -2019,6 +2020,46 @@ Tip: I automatically detect and install npm packages from your code imports (lik
 
     // Check for special commands
     const lowerMessage = message.toLowerCase().trim();
+
+    const isBnbQuery = selectedChain === "bnb" || lowerMessage.includes("bnb") || lowerMessage.includes("binance") || lowerMessage.includes("bsc");
+
+    if (isBnbQuery) {
+      const isAuditRequest = lowerMessage.includes("audit") || lowerMessage.includes("security") || lowerMessage.includes("vulnerab") || lowerMessage.includes("risk");
+      try {
+        addChatMessage("Consulting ChainGPT for BNB Chain Expertise...", 'system');
+
+        const apiUrl = isAuditRequest ? "/api/chaingpt/audit" : "/api/chaingpt/chat"
+
+        const chainGPTResponse = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': "application/json",
+          },
+          body: JSON.stringify({
+            question: message,
+            userId: currentUser?.id
+          })
+        })
+        
+        const chainGPTData = await chainGPTResponse.json();
+
+        if (chainGPTData.success) {
+          addChatMessage(chainGPTData.bot.ai, 'ai')
+
+          if (!lowerMessage.includes('create') && 
+              !lowerMessage.includes('generate') && 
+              !lowerMessage.includes('build') &&
+              !lowerMessage.includes('make')) {
+            return;
+          }
+        }
+
+      } catch (err) {
+        console.error('ChainGPT error:', err);
+        addChatMessage('ChainGPT unavailable, proceeding with standard AI...', 'system');
+      }
+    }
+
     if (lowerMessage === 'check packages' || lowerMessage === 'install packages' || lowerMessage === 'npm install') {
       if (!sandboxData) {
         // More helpful message - user might be trying to run this too early
@@ -3493,7 +3534,7 @@ Focus on the key sections and content, making it clean and modern.`;
   return (
     <HeaderProvider>
       <div className="font-sans bg-background text-foreground h-screen flex flex-col">
-        <div className="bg-white py-[15px] py-[8px] border-b border-border-faint flex items-center justify-between shadow-sm">
+        <div className="bg-white py-[15px] border-b border-border-faint flex items-center justify-between shadow-sm">
           <HeaderBrandKit />
           <div className="flex items-center gap-2">
             {/* Model Selector - Left side */}
@@ -3985,6 +4026,8 @@ Focus on the key sections and content, making it clean and modern.`;
                     Sandbox active
                   </div>
                 )}
+
+                {selectedChain === "bnb" && <ChainGPTIndicator active={true}/>}
 
                 {/* Open in new tab button */}
                 {sandboxData && (

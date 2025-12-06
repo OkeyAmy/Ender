@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 const NETWORKS = [
   { id: "solana", name: "Solana", icon: "◎" },
   { id: "celo", name: "Celo", icon: "🌿" },
+  { id: "bnb", name:"Binance", icon: "◎" }
 ];
 
 const MODELS = appConfig.ai.availableModels.map((id) => ({
@@ -42,6 +43,16 @@ export default function NewHomePage() {
     const urlPattern = /^(https?:\/\/)?([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/.*)?$/;
     return urlPattern.test(str.trim());
   };
+
+  const handleSubmitChainGPT = async () => {
+    const brief = textBrief.trim();
+    if (!brief) {
+      toast.error("Please describe your issue to get started");
+      return;
+    }
+
+    if (isTextSubmitting) return;
+  }
 
   const handleSubmit = async () => {
     // Simplified to just handle text submission for now as UI focus is text
