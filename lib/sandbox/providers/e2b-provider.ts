@@ -75,7 +75,8 @@ export class E2BProvider extends SandboxProvider {
       throw new Error('No active sandbox');
     }
 
-    
+    const startedAt = Date.now();
+
     const result = await this.sandbox.runCode(`
       import subprocess
       import os
@@ -90,19 +91,30 @@ export class E2BProvider extends SandboxProvider {
       print(result.stdout)
       if result.stderr:
           print("\\nSTDERR:")
-          print(result.stderr)
+      print(result.stderr)
       print(f"\\nReturn code: {result.returncode}")
     `);
     
     const output = result.logs.stdout.join('\n');
     const stderr = result.logs.stderr.join('\n');
-    
-    return {
+
+    const enriched: CommandResult = {
       stdout: output,
       stderr,
       exitCode: result.error ? 1 : 0,
-      success: !result.error
+      success: !result.error,
+      command,
+      cwd: '/home/user/app',
+      durationMs: Date.now() - startedAt,
+      timestamp: new Date()
     };
+
+    this.emitCommandEvent(this.buildCommandEvent(command, enriched, {
+      durationMs: enriched.durationMs,
+      cwd: enriched.cwd
+    }));
+
+    return enriched;
   }
 
   async writeFile(path: string, content: string): Promise<void> {
@@ -190,7 +202,9 @@ export class E2BProvider extends SandboxProvider {
     const packageList = packages.join(' ');
     const flags = appConfig.packages.useLegacyPeerDeps ? '--legacy-peer-deps' : '';
     
-    
+    const commandStr = `npm install ${flags ? `${flags} ` : ''}${packageList}`.trim();
+    const startedAt = Date.now();
+
     const result = await this.sandbox.runCode(`
       import subprocess
       import os
@@ -219,13 +233,25 @@ export class E2BProvider extends SandboxProvider {
     if (appConfig.packages.autoRestartVite && !result.error) {
       await this.restartViteServer();
     }
-    
-    return {
+
+    const enriched: CommandResult = {
       stdout: output,
       stderr,
       exitCode: result.error ? 1 : 0,
-      success: !result.error
+      success: !result.error,
+      command: commandStr,
+      cwd: '/home/user/app',
+      durationMs: Date.now() - startedAt,
+      timestamp: new Date()
     };
+
+    this.emitCommandEvent(this.buildCommandEvent(commandStr, enriched, {
+      durationMs: enriched.durationMs,
+      cwd: enriched.cwd,
+      tags: ['install']
+    }));
+
+    return enriched;
   }
 
   async setupViteApp(): Promise<void> {

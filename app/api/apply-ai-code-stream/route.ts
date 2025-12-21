@@ -4,12 +4,28 @@ import { parseMorphEdits, applyMorphEditToFile } from '@/lib/morph-fast-apply';
 import type { SandboxState } from '@/types/sandbox';
 import type { ConversationState } from '@/types/conversation';
 import { sandboxManager } from '@/lib/sandbox/sandbox-manager';
+import { keepAlive } from '@/lib/sandbox/lifecycle/keep-alive';
+import { healthMonitor } from '@/lib/sandbox/health/health-monitor';
+import { buildErrorHandler } from '@/lib/sandbox/recovery/build-error-handler';
+import { runMultiAgentCycle } from '@/lib/agents/multi-agent-orchestrator';
+import { ModelFactory } from '@/lib/agents/models/model-factory';
+import { aiFeedbackLoop } from '@/lib/agents/ai-feedback-loop';
+import { appConfig } from '@/config/app.config';
 
 declare global {
   var conversationState: ConversationState | null;
   var activeSandboxProvider: any;
   var existingFiles: Set<string>;
   var sandboxState: SandboxState;
+  // Generation monitoring state
+  var generationMonitor: {
+    isGenerating: boolean;
+    currentOperation: string;
+    lastError: string | null;
+    startTime: number | null;
+    filesProcessed: number;
+    totalFiles: number;
+  } | null;
 }
 
 interface ParsedResponse {
@@ -286,7 +302,7 @@ export async function POST(request: NextRequest) {
     if (morphEnabled) {
       console.log('[apply-ai-code-stream] Morph edits found:', morphEdits.length);
     }
-    
+
     // Log what was parsed
     console.log('[apply-ai-code-stream] Parsed result:');
     console.log('[apply-ai-code-stream] Files found:', parsed.files.length);
@@ -409,6 +425,39 @@ export async function POST(request: NextRequest) {
         errors: [] as string[]
       };
 
+      // Start keep-alive session to prevent sandbox timeout during code application
+      const sessionId = keepAlive.startSession('code-application');
+      console.log(`[apply-ai-code-stream] Started keep-alive session: ${sessionId}`);
+
+      // Initialize generation monitor for tracking
+      global.generationMonitor = {
+        isGenerating: true,
+        currentOperation: 'starting',
+        lastError: null,
+        startTime: Date.now(),
+        filesProcessed: 0,
+        totalFiles: parsed.files.length
+      };
+
+      // Verify sandbox health before starting
+      const healthResult = await healthMonitor.forceCheck();
+      if (!healthResult.healthy) {
+        console.log('[apply-ai-code-stream] Sandbox unhealthy, attempting recovery...');
+        await sendProgress({
+          type: 'warning',
+          message: 'Sandbox health check failed, attempting recovery...'
+        });
+
+        // Try to recover
+        const errors = buildErrorHandler.detectErrors(healthResult.error || 'Sandbox not responding');
+        if (errors.length > 0) {
+          const recovery = await buildErrorHandler.recover(errors);
+          if (!recovery.success) {
+            throw new Error('Sandbox is not healthy and recovery failed');
+          }
+        }
+      }
+
       try {
         await sendProgress({
           type: 'start',
@@ -423,7 +472,7 @@ export async function POST(request: NextRequest) {
             await sendProgress({ type: 'warning', message: 'Morph enabled but no <edit> blocks found; falling back to full-file flow' });
           }
         }
-        
+
         // Step 1: Install packages
         const packagesArray = Array.isArray(packages) ? packages : [];
         const parsedPackages = Array.isArray(parsed.packages) ? parsed.packages : [];
@@ -579,15 +628,15 @@ export async function POST(request: NextRequest) {
             let normalizedPath = file.path.startsWith('/') ? file.path.slice(1) : file.path;
             const fileName = normalizedPath.split('/').pop() || '';
             if (!normalizedPath.startsWith('src/') &&
-                !normalizedPath.startsWith('public/') &&
-                normalizedPath !== 'index.html' &&
-                !configFiles.includes(fileName)) {
+              !normalizedPath.startsWith('public/') &&
+              normalizedPath !== 'index.html' &&
+              !configFiles.includes(fileName)) {
               normalizedPath = 'src/' + normalizedPath;
             }
             return !morphUpdatedPaths.has(normalizedPath);
           });
         }
-        
+
         for (const [index, file] of filteredFiles.entries()) {
           try {
             // Send progress for each file
@@ -634,8 +683,67 @@ export async function POST(request: NextRequest) {
               await providerInstance.runCommand(`mkdir -p ${dirPath}`);
             }
 
-            // Write the file using provider
-            await providerInstance.writeFile(normalizedPath, fileContent);
+            // Write the file using provider with retry logic for sandbox timeouts
+            let writeSuccess = false;
+            let lastWriteError: Error | null = null;
+            const maxRetries = 2;
+
+            for (let attempt = 0; attempt <= maxRetries && !writeSuccess; attempt++) {
+              try {
+                if (attempt > 0) {
+                  console.log(`[apply-ai-code-stream] Retry ${attempt}/${maxRetries} for ${normalizedPath}`);
+                  await sendProgress({
+                    type: 'warning',
+                    message: `Retrying file write (attempt ${attempt + 1}/${maxRetries + 1})...`
+                  });
+
+                  // Send heartbeat before retry
+                  keepAlive.recordActivity();
+
+                  // Small delay before retry
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+
+                await providerInstance.writeFile(normalizedPath, fileContent);
+                writeSuccess = true;
+
+              } catch (writeError: any) {
+                lastWriteError = writeError;
+                const errorMessage = writeError.message || '';
+
+                // Check if this is a sandbox timeout/stopped error (410)
+                if (errorMessage.includes('410') || errorMessage.includes('stopped') || errorMessage.includes('Gone')) {
+                  console.log(`[apply-ai-code-stream] Sandbox timeout detected for ${normalizedPath}, attempting recovery...`);
+
+                  // Update generation monitor
+                  if (global.generationMonitor) {
+                    global.generationMonitor.lastError = 'Sandbox connection lost, recovering...';
+                    global.generationMonitor.currentOperation = 'recovering';
+                  }
+
+                  await sendProgress({
+                    type: 'warning',
+                    message: 'Sandbox connection lost, attempting recovery...'
+                  });
+
+                  // Try to recover by restarting Vite or reconnecting
+                  try {
+                    await providerInstance.restartViteServer();
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                    console.log('[apply-ai-code-stream] Recovery attempt completed');
+                  } catch (recoveryError) {
+                    console.error('[apply-ai-code-stream] Recovery failed:', recoveryError);
+                  }
+                } else {
+                  // Non-recoverable error, don't retry
+                  break;
+                }
+              }
+            }
+
+            if (!writeSuccess && lastWriteError) {
+              throw lastWriteError;
+            }
 
             // Update file cache
             if (global.sandboxState?.fileCache) {
@@ -643,6 +751,12 @@ export async function POST(request: NextRequest) {
                 content: fileContent,
                 lastModified: Date.now()
               };
+            }
+
+            // Update generation monitor progress
+            if (global.generationMonitor) {
+              global.generationMonitor.filesProcessed = index + 1;
+              global.generationMonitor.currentOperation = 'writing-files';
             }
 
             if (isUpdate) {
@@ -736,6 +850,54 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        // Step 4: Validation & Self-Correction
+        await sendProgress({
+          type: 'step',
+          step: 4,
+          message: 'Validating and self-correcting...'
+        });
+
+        // Run multi-agent validation cycle
+        try {
+          const modelConfig = ModelFactory.fromModelId(
+            appConfig.ai.defaultModel || 'google/gemini-flash-latest'
+          );
+          const model = ModelFactory.create(modelConfig);
+
+          const { decision, buildResult } = await runMultiAgentCycle(model);
+
+          if (!decision.readyForUser) {
+            console.log('[apply-ai-code-stream] Validation failed, triggering self-correction');
+            await sendProgress({
+              type: 'warning',
+              message: `Issues detected: ${decision.reasoning.substring(0, 100)}... Self-correcting...`
+            });
+
+            // Trigger self-fix loop explicitly if needed, or rely on the fact that 
+            // command failures already triggered it via the bus.
+            // But here we can be proactive about "soft" failures like lint/validation.
+
+            // If we have specific follow-ups, we could execute them here.
+            // For now, we'll trust the feedback loop to pick up logs.
+            // We'll wait a bit if the feedback loop is running.
+
+            // Wait for feedback loop to settle
+            let checks = 0;
+            while ((global as any).aiFeedbackLoopRunning && checks < 10) {
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              checks++;
+            }
+          } else {
+            await sendProgress({
+              type: 'info',
+              message: 'Validation passed! Build is healthy.'
+            });
+          }
+        } catch (validationError) {
+          console.error('[apply-ai-code-stream] Validation cycle failed:', validationError);
+          // Don't fail the whole request, just log
+        }
+
         // Send final results
         await sendProgress({
           type: 'complete',
@@ -771,11 +933,28 @@ export async function POST(request: NextRequest) {
         }
 
       } catch (error) {
+        // Update generation monitor with error
+        if (global.generationMonitor) {
+          global.generationMonitor.isGenerating = false;
+          global.generationMonitor.lastError = (error as Error).message;
+          global.generationMonitor.currentOperation = 'failed';
+        }
+
         await sendProgress({
           type: 'error',
           error: (error as Error).message
         });
       } finally {
+        // End keep-alive session
+        keepAlive.endSession();
+        console.log('[apply-ai-code-stream] Ended keep-alive session');
+
+        // Update generation monitor
+        if (global.generationMonitor) {
+          global.generationMonitor.isGenerating = false;
+          global.generationMonitor.currentOperation = 'completed';
+        }
+
         await writer.close();
       }
     })(provider, request);

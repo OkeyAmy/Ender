@@ -60,3 +60,6 @@ bun.lockb
 
 # Ignore vibe-coding-ui directory
 vibe-coding-ui/
+vibesdk/*
+vibesdk/.*
+vibesdk/

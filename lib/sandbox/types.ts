@@ -1,3 +1,5 @@
+import { commandLogBus, CommandLogEvent } from './telemetry/command-log-bus';
+
 export interface SandboxFile {
   path: string;
   content: string;
@@ -16,6 +18,11 @@ export interface CommandResult {
   stderr: string;
   exitCode: number;
   success: boolean;
+  command?: string;
+  cwd?: string;
+  durationMs?: number;
+  timestamp?: Date;
+  meta?: Record<string, any>;
 }
 
 export interface SandboxProviderConfig {
@@ -36,6 +43,7 @@ export abstract class SandboxProvider {
   protected config: SandboxProviderConfig;
   protected sandbox: any;
   protected sandboxInfo: SandboxInfo | null = null;
+  private commandListeners: Set<(event: CommandLogEvent) => void> = new Set();
 
   constructor(config: SandboxProviderConfig) {
     this.config = config;
@@ -51,6 +59,52 @@ export abstract class SandboxProvider {
   abstract getSandboxInfo(): SandboxInfo | null;
   abstract terminate(): Promise<void>;
   abstract isAlive(): boolean;
+  
+  /**
+   * Subscribe to command events for this provider.
+   * Returns an unsubscribe function.
+   */
+  onCommand(listener: (event: CommandLogEvent) => void): () => void {
+    this.commandListeners.add(listener);
+    return () => this.commandListeners.delete(listener);
+  }
+  
+  /**
+   * Emit a command log event to all listeners and the global bus.
+   */
+  protected emitCommandEvent(event: CommandLogEvent): void {
+    // Local listeners (provider-level)
+    for (const listener of this.commandListeners) {
+      try {
+        listener(event);
+      } catch (err) {
+        console.error('[SandboxProvider] Command listener error', err);
+      }
+    }
+
+    // Global bus for orchestration/agents
+    commandLogBus.emit(event);
+  }
+  
+  /**
+   * Helper to build a structured command event with provider metadata.
+   */
+  protected buildCommandEvent(command: string, result: CommandResult, meta: Partial<CommandLogEvent> = {}): CommandLogEvent {
+    return {
+      command,
+      stdout: result.stdout || '',
+      stderr: result.stderr || '',
+      exitCode: typeof result.exitCode === 'number' ? result.exitCode : 1,
+      success: result.success,
+      timestamp: meta.timestamp || new Date(),
+      provider: this.sandboxInfo?.provider,
+      sandboxId: this.sandboxInfo?.sandboxId,
+      durationMs: result.durationMs,
+      cwd: result.cwd,
+      meta: result.meta,
+      ...meta,
+    };
+  }
   
   // Optional methods that providers can override
   async setupViteApp(): Promise<void> {

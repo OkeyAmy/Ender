@@ -393,6 +393,17 @@ function AISandboxPage() {
     }
   }, [chatMessages]);
 
+  // Keep the preview iframe in sync whenever we learn about or switch sandboxes
+  useEffect(() => {
+    if (!sandboxData?.url || !iframeRef.current) return;
+
+    const currentSrc = iframeRef.current.src || '';
+    const normalizedCurrent = currentSrc.split('?')[0];
+    if (!normalizedCurrent || !normalizedCurrent.startsWith(sandboxData.url)) {
+      iframeRef.current.src = `${sandboxData.url}?t=${Date.now()}&autosync=true`;
+    }
+  }, [sandboxData?.url]);
+
   // Show welcome toast on first visit
   useEffect(() => {
     const hasShownWelcome = sessionStorage.getItem('welcomeShown');
@@ -822,6 +833,7 @@ Tip: I automatically detect and install npm packages from your code imports (lik
     try {
       // Show progress component instead of individual messages
       setCodeApplicationState({ stage: 'analyzing' });
+      setActiveTab('preview');
 
       // Get pending packages from tool calls
       const pendingPackages = ((window as any).pendingPackages || []).filter((pkg: any) => pkg && typeof pkg === 'string');
@@ -833,6 +845,9 @@ Tip: I automatically detect and install npm packages from your code imports (lik
 
       // Use streaming endpoint for real-time feedback
       const effectiveSandboxData = overrideSandboxData || sandboxData;
+      if (effectiveSandboxData?.url && iframeRef.current) {
+        iframeRef.current.src = `${effectiveSandboxData.url}?t=${Date.now()}&autoshow=true`;
+      }
       const response = await fetch('/api/apply-ai-code-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -941,6 +956,10 @@ Tip: I automatically detect and install npm packages from your code imports (lik
                 case 'complete':
                   finalData = data;
                   setCodeApplicationState({ stage: 'complete' });
+                  setActiveTab('preview');
+                  if (effectiveSandboxData?.url && iframeRef.current) {
+                    iframeRef.current.src = `${effectiveSandboxData.url}?t=${Date.now()}&final=true`;
+                  }
                   // Clear the state after a delay
                   setTimeout(() => {
                     setCodeApplicationState({ stage: null });
